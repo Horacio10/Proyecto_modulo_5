@@ -1,0 +1,115 @@
+---
+title: "Proyecto 5to modulo"
+author: "Teddy Horacio Alvarez Zarate"
+date: "2023-09-18"
+output: github_document
+---
+
+```{r }
+library(tidyverse)
+library(readxl)
+setwd("~/Experto en ciencia de datos/Modulo 5/Bases de datos")
+bancos <- read_excel("indicadores.xlsx")
+
+```
+
+## Seleccionando los indicadores "Activos productivos/total activos", "Morosidad cartera total", "Gastos de operacion/Margen financiero", "Rentabilidad del ejercicio/activo promedio" y "Fondos disponibles/total depositos corto plazo"
+
+
+```{r }
+bancos1 <- bancos%>%filter(`NOMBRE DEL INDICADOR`=="ACTIVOS PRODUCTIVOS / TOTAL ACTIVOS"|`NOMBRE DEL INDICADOR`=="MOROSIDAD DE LA CARTERA TOTAL"|`NOMBRE DEL INDICADOR`=="GASTOS DE OPERACION  / MARGEN FINANCIERO"|`NOMBRE DEL INDICADOR`=="RESULTADOS DEL EJERCICIO / ACTIVO PROMEDIO"|`NOMBRE DEL INDICADOR`=="FONDOS DISPONIBLES / TOTAL DEPOSITOS A CORTO PLAZO")
+
+bancos1 <- bancos1%>%
+select(-(`TOTAL BANCOS PRIVADOS`))
+
+bancos1 <- bancos1%>%
+gather(`BP GUAYAQUIL`: `BANCOS PRIVADOS DE MICROEMPRESA`, key = "BANCOS", value = "valores")%>%
+spread(key = "NOMBRE DEL INDICADOR", value = "valores")
+
+```
+
+## Construya un cluster jerarquico. Grafique y comente su composición, usando al menos 2 distancias y dos métodos de clasificación
+
+
+```{r }
+nombres <- bancos1$BANCOS
+
+base <- as.data.frame(scale(bancos1[,-1]))
+
+row.names(base)<- nombres
+
+cluster <- hclust(dist(base, method = "euclidean"), method = "ward.D")
+
+plot(cluster)
+
+plot(cluster, hang = -0.01, cex=0.8)
+
+cluster2 <- hclust(dist(base, method = "euclidean"), method = "average")
+
+plot(cluster2, hang = -0.01, cex=0.8)
+
+par(mfrow=c(1,2))
+
+plot(cluster, hang = -0.01, cex=0.8);plot(cluster2, hang = -0.01, cex=0.8)
+
+```
+
+### Comparando los dos Gráficos, en el caso de los bancos “Bancos Privados de vivienda”, “Banco Litoral” y “BP Vision Fund de Ecuador” aparecen solos en ambos gráficos, en cambio que “BP Capital” aparece unido a “Bancos Privados de Vivienda” en el grafico izquierdo, en el grafico derecho aparece solo. Sobre el numero de Clusters, en el grafico izquierdo, aparecen 4 clusters y en el grafico izquierdo aparecen 6 clusters 
+   
+
+## Determinando a que distancian se encuentran los elementos entre si, y a que grupos pertenecen los elementos y realizando cortes
+
+```{r }
+distancia <- dist(base, method = "euclidean")
+
+cluster$merge
+
+cutree(cluster, k=4)
+
+plot(cluster, hang = -0.01, cex=0.8)
+
+grupos <- as.data.frame(cutree(cluster, k=4))
+
+library(cluster)
+
+ncluster <- diana(base, metric = "euclidean")
+
+par(mfrow=c(1,2))
+
+plot(ncluster)
+
+library(devtools)
+
+library(factoextra)
+
+library(fpc)
+
+library(cluster)
+
+cluster1 <- hcut(base, k=4, stand = TRUE, hc_metric = "euclidean", hc_method = "ward.D")
+
+fviz_dend(cluster1, rect = TRUE, cex=0.5, k_colors = c("blue", "red", "orange", "brown"))
+
+```
+
+## Construya un cluster no jerarquico. Determine el número óptimo de clusters, grafique y comente
+
+```{r }
+cnj <- kmeans(base,4)
+cnj
+cnj$centers
+aggregate(base, by=list(cnj$cluster), FUN = mean)
+fviz_cluster(cnj, data = base)
+
+```
+
+### Determinando el numero optimo de clusters
+
+```{r }
+library(NbClust)
+
+clusteroptimo <- NbClust(base, distance = "euclidean", min.nc = 4,
+                         max.nc = 6, method = "ward.D", index="all")
+```
+
+### De acuerdo al calculo del numero optimo de clusters, este debe ser de 5 lo cual difiere en 1 con el calculo de cluster por el metodo de cluster jerarquico
